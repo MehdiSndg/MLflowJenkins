@@ -1,90 +1,47 @@
 pipeline {
-    agent any
-
-    environment {
-        DOCKER_IMAGE = 'python:3.11-slim'
-        USE_DOCKER = 'false'
-    }
-
-    stages {
-        stage('Detect environment') {
-            steps {
-                script {
-                    def binaryExists = sh(script: '[ -x /usr/bin/docker ] || [ -x /usr/local/bin/docker ]', returnStatus: true) == 0
-                    def socketExists = sh(script: '[ -S /var/run/docker.sock ]', returnStatus: true) == 0
-                    env.USE_DOCKER = (binaryExists && socketExists) ? 'true' : 'false'
-                    if (env.USE_DOCKER == 'true') {
-                        echo "Docker detected. Running build in container ${env.DOCKER_IMAGE} as root."
-                    } else {
-                        echo "Docker not available. Falling back to system Python. Ensure python3, python3-venv, and pip are installed on this agent."
-                    }
-                }
-            }
+    agent {
+        docker {
+            image 'python:3.11-slim'
+            args '-u root'
         }
-
+    }
+    environment {
+        C = "1.0"
+        MAX_ITER = "200"
+    }
+    stages {
         stage('Install dependencies') {
             steps {
-                script {
-                    if (env.USE_DOCKER == 'true') {
-                        sh '''
-                            docker run --rm -u root -v "$PWD":/workspace -w /workspace ${DOCKER_IMAGE} bash -lc "
-                                set -e
-                                rm -rf .venv
-                                python -m venv .venv
-                                . .venv/bin/activate
-                                python -m pip install --upgrade pip
-                                pip install --no-cache-dir -r requirements.txt
-                            "
-                        '''
-                    } else {
-                        sh '''
-                            set -e
-                            if ! command -v python3 >/dev/null 2>&1; then
-                                echo "Python 3 is required when Docker is not available. Install Python 3 + pip on this agent."
-                                exit 1
-                            fi
-
-                            rm -rf .venv
-                            python3 -m venv .venv || {
-                                echo "Failed to create virtual environment. Ensure python3-venv (or equivalent) is installed."
-                                exit 1
-                            }
-                            . .venv/bin/activate
-                            python -m pip install --upgrade pip
-                            pip install --no-cache-dir -r requirements.txt
-                        '''
-                    }
-                }
+                sh '''
+                    set -e
+                    apt-get update
+                    apt-get install -y python3-venv
+                    python --version
+                    python -m pip install --upgrade pip
+                    pip install --no-cache-dir -r requirements.txt
+                '''
             }
         }
 
         stage('Run training') {
             steps {
-                script {
-                    if (env.USE_DOCKER == 'true') {
-                        sh '''
-                            docker run --rm -u root -v "$PWD":/workspace -w /workspace ${DOCKER_IMAGE} bash -lc "
-                                set -e
-                                . .venv/bin/activate
-                                python -m pip install --upgrade pip
-                                python train.py
-                            "
-                        '''
-                    } else {
-                        sh '''
-                            set -e
-                            . .venv/bin/activate
-                            python train.py
-                        '''
-                    }
-                }
+                sh 'python train.py'
+            }
+        }
+
+        stage('Archive results') {
+            steps {
+                archiveArtifacts artifacts: 'mlruns/**', fingerprint: true
+                archiveArtifacts artifacts: 'artifacts/**', fingerprint: true, allowEmptyArchive: true
             }
         }
     }
-
     post {
         success {
-            archiveArtifacts artifacts: 'mlruns/**,artifacts/**', fingerprint: true
+            echo '✅ Build başarıyla tamamlandı. MLflow run oluşturuldu.'
+        }
+        failure {
+            echo '❌ Build başarısız oldu.'
         }
     }
 }
