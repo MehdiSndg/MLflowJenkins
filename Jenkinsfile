@@ -22,25 +22,38 @@ pipeline {
         }
 
         stage('Install dependencies') {
-            when {
-                expression { env.USE_DOCKER != 'true' }
-            }
             steps {
-                sh '''
-                    set -e
-                    if ! command -v python3 >/dev/null 2>&1; then
-                        echo "Python 3 is required when Docker is not available. Install Docker or Python 3 + pip on this agent."
-                        exit 1
-                    fi
+                script {
+                    if (env.USE_DOCKER == 'true') {
+                        sh '''
+                            docker run --rm -u root -v "$PWD":/workspace -w /workspace ${DOCKER_IMAGE} bash -lc "
+                                set -e
+                                rm -rf .venv
+                                python -m venv .venv
+                                . .venv/bin/activate
+                                python -m pip install --upgrade pip
+                                pip install --no-cache-dir -r requirements.txt
+                            "
+                        '''
+                    } else {
+                        sh '''
+                            set -e
+                            if ! command -v python3 >/dev/null 2>&1; then
+                                echo "Python 3 is required when Docker is not available. Install Python 3 + pip on this agent."
+                                exit 1
+                            fi
 
-                    python3 -m venv .venv || {
-                        echo "Failed to create virtual environment. Ensure python3-venv (or equivalent) is installed."
-                        exit 1
-                    }
-                    . .venv/bin/activate
-                    python -m pip install --upgrade pip
-                    pip install --no-cache-dir -r requirements.txt
-                '''
+                            rm -rf .venv
+                            python3 -m venv .venv || {
+                                echo "Failed to create virtual environment. Ensure python3-venv (or equivalent) is installed."
+                                exit 1
+                            }
+                            . .venv/bin/activate
+                            python -m pip install --upgrade pip
+                            pip install --no-cache-dir -r requirements.txt
+                        '''
+                    fi
+                }
             }
         }
 
@@ -51,8 +64,8 @@ pipeline {
                         sh '''
                             docker run --rm -u root -v "$PWD":/workspace -w /workspace ${DOCKER_IMAGE} bash -lc "
                                 set -e
+                                . .venv/bin/activate
                                 python -m pip install --upgrade pip
-                                pip install --no-cache-dir -r requirements.txt
                                 python train.py
                             "
                         '''
