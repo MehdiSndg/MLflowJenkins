@@ -10,12 +10,13 @@ pipeline {
         stage('Detect environment') {
             steps {
                 script {
-                    def result = sh(script: 'command -v docker >/dev/null 2>&1', returnStatus: true)
-                    env.USE_DOCKER = result == 0 ? 'true' : 'false'
+                    def binaryExists = sh(script: '[ -x /usr/bin/docker ] || [ -x /usr/local/bin/docker ]', returnStatus: true) == 0
+                    def socketExists = sh(script: '[ -S /var/run/docker.sock ]', returnStatus: true) == 0
+                    env.USE_DOCKER = (binaryExists && socketExists) ? 'true' : 'false'
                     if (env.USE_DOCKER == 'true') {
                         echo "Docker detected. Running build in container ${env.DOCKER_IMAGE} as root."
                     } else {
-                        echo "Docker not available. Falling back to system Python. Ensure python3 and pip are installed on this agent."
+                        echo "Docker not available. Falling back to system Python. Ensure python3, python3-venv, and pip are installed on this agent."
                     }
                 }
             }
