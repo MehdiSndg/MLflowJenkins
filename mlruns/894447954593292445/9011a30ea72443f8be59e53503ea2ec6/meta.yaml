@@ -1,0 +1,14 @@
+artifact_uri: file:///C:/Users/User/MLflowJenkins/mlruns/894447954593292445/9011a30ea72443f8be59e53503ea2ec6/artifacts
+end_time: 1761833380105
+entry_point_name: ''
+experiment_id: '894447954593292445'
+lifecycle_stage: active
+run_id: 9011a30ea72443f8be59e53503ea2ec6
+run_name: peaceful-dog-779
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1761833374490
+status: 3
+tags: []
+user_id: User

@@ -1,0 +1,10 @@
+artifact_location: file:///C:/Users/User/MLflowJenkins/mlruns/894447954593292445/models/m-ab0bfaa426e348a9bebd4f7927114ca2/artifacts
+creation_timestamp: 1761833374595
+experiment_id: '894447954593292445'
+last_updated_timestamp: 1761833380049
+model_id: m-ab0bfaa426e348a9bebd4f7927114ca2
+model_type: null
+name: model
+source_run_id: 9011a30ea72443f8be59e53503ea2ec6
+status: 2
+status_message: null
